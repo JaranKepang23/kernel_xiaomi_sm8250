@@ -33,7 +33,7 @@ export HEADER_ARCH=arm64
 DATE=$(date +"%Y-%m-%d-%H%M")
 
 if [[ "$@" =~ "miui"* ]]; then
-DEVICE="alioth-miui-ONLY"
+DEVICE="alioth-miui"
 else
 DEVICE="alioth"
 fi
@@ -43,9 +43,9 @@ OUT_DIR=out/
 
 # Select LTO or non LTO builds
 if [[ "$@" =~ "lto"* ]]; then
-    VERSION="KimciLodon-${DEVICE^^}-LTO-${DATE}"
+    VERSION="KimciLodon-v2-${DEVICE^^}-LTO-${DATE}"
 else
-    VERSION="KimciLodon-${DEVICE^^}-${DATE}"
+    VERSION="KimciLodon-v2-${DEVICE^^}-${DATE}"
 fi
 
 # Export Zip name

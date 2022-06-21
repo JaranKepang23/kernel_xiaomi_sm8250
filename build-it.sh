@@ -16,6 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+#                                              #
+# THANK @UTSAVBALAR1231 FOR THIS BUILD SCRIPT #
+#                                              #
+
 HOME=/home/jimmy/cmpl
 desk=/home/jimmy/Desktop
 KBUILD_COMPILER_STRING=$(/home/jimmy/cmpl/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
@@ -26,38 +31,22 @@ export ARCH=arm64
 export SUBARCH=arm64
 export HEADER_ARCH=arm64
 
-#
-# Enviromental Variables
-#
+
+# Set compiler Path
+export PATH="/home/jimmy/cmpl/gas:/home/jimmy/cmpl/clang/bin:$PATH"
+export LD_LIBRARY_PATH="/home/jimmy/cmpl/clang/lib64:$LD_LIBRARY_PATH"
 
 DATE=$(date +"%Y-%m-%d-%H%M")
-
-if [[ "$@" =~ "miui"* ]]; then
-DEVICE="alioth-miui"
-else
 DEVICE="alioth"
-fi
 
 # Set our directory
 OUT_DIR=out/
-
-# Select LTO or non LTO builds
-if [[ "$@" =~ "lto"* ]]; then
-    VERSION="KimciLodon-v2-${DEVICE^^}-LTO-${DATE}"
-else
-    VERSION="KimciLodon-v2-${DEVICE^^}-${DATE}"
-fi
-
-# Export Zip name
-export ZIPNAME="${VERSION}.zip"
 
 # How much kebabs we need? Kanged from @raphielscape :)
 if [[ -z "${KEBABS}" ]]; then
     COUNT="$(grep -c '^processor' /proc/cpuinfo)"
     export KEBABS="$((COUNT + 2))"
 fi
-
-echo "Jobs: ${KEBABS}"
 
 ARGS="ARCH=arm64 \
 O=${OUT_DIR} \
@@ -68,6 +57,7 @@ CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
 -j${KEBABS}"
 
 dts_source=arch/arm64/boot/dts/vendor/qcom
+
 # Correct panel dimensions on MIUI builds
 function miui_fix_dimens() {
     sed -i 's/<70>/<695>/g' $dts_source/dsi-panel-j3s-37-02-0a-dsc-video.dtsi
@@ -126,7 +116,42 @@ function miui_fix_fod() {
     sed -i 's/\/\/39 01 00 00 00 00 03 51 03 FF/39 01 00 00 00 00 03 51 03 FF/g' $dts_source/dsi-panel-j9-38-0a-0a-fhd-video.dtsi
 }
 
-function enable_lto() {
+AOSP_BUILD()
+{
+ # AOSP Build
+ echo "------ Stating AOSP Build ------"
+ os=aosp
+# Make defconfig
+ make -j${KEBABS} ${ARGS} ${DEVICE}_defconfig
+ make -j${KEBABS} ${ARGS} 2>&1 | tee build.log
+ find ${OUT_DIR}/$dts_source -name '*.dtb' -exec cat {} + > ${OUT_DIR}/arch/arm64/boot/dtb
+
+ mkdir -p ${desk}/anykernel/kernels/$os
+ # Import Anykernel3 folder
+ if [[ -f ${OUT_DIR}/arch/arm64/boot/Image.gz ]]; then
+     cp ${OUT_DIR}/arch/arm64/boot/Image.gz ${desk}/anykernel/kernels/$os
+ else
+   if [[ -f ${OUT_DIR}/arch/arm64/boot/Image ]]; then
+       cp ${OUT_DIR}/arch/arm64/boot/Image ${desk}/anykernel/kernels/$os
+   else
+     echo  ".no image found."
+   fi
+ fi
+ cp ${OUT_DIR}/arch/arm64/boot/dtb ${desk}/anykernel/kernels/$os
+ cp ${OUT_DIR}/arch/arm64/boot/dtbo.img ${desk}/anykernel/kernels/$os
+ echo "------ Finishing AOSP Build ------"
+}
+
+AOSP_LTO_BUILD()
+{
+ # AOSP LTO Build
+ echo "------ Stating AOSP LTO Build ------"
+ os=aosp
+
+# Make defconfig
+make -j${KEBABS} ${ARGS} ${DEVICE}_defconfig
+
+# Enable LTO
     scripts/config --file ${OUT_DIR}/.config \
         -e LTO_CLANG
 
@@ -134,56 +159,28 @@ function enable_lto() {
     cd ${OUT_DIR} || exit
     make -j${KEBABS} ${ARGS} olddefconfig
     cd ../ || exit
+
+ make -j${KEBABS} ${ARGS} 2>&1 | tee build.log
+ find ${OUT_DIR}/$dts_source -name '*.dtb' -exec cat {} + > ${OUT_DIR}/arch/arm64/boot/dtb
+
+ mkdir -p ${desk}/anykernel/kernels/$os
+ # Import Anykernel3 folder
+ if [[ -f ${OUT_DIR}/arch/arm64/boot/Image.gz ]]; then
+     cp ${OUT_DIR}/arch/arm64/boot/Image.gz ${desk}/anykernel/kernels/$os
+ else
+   if [[ -f ${OUT_DIR}/arch/arm64/boot/Image ]]; then
+       cp ${OUT_DIR}/arch/arm64/boot/Image ${desk}/anykernel/kernels/$os
+   else
+     echo  ".no image found."
+   fi
+ fi
+ cp ${OUT_DIR}/arch/arm64/boot/dtb ${desk}/anykernel/kernels/$os
+ cp ${OUT_DIR}/arch/arm64/boot/dtbo.img ${desk}/anykernel/kernels/$os
+ echo "------ Finishing AOSP LTO Build ------"
 }
 
-function disable_lto() {
-    scripts/config --file ${OUT_DIR}/.config \
-        -d LTO_CLANG
-
-    # Make olddefconfig
-    cd ${OUT_DIR} || exit
-    make -j${KEBABS} ${ARGS} olddefconfig
-    cd ../ || exit
-}
-
-START=$(date +"%s")
-
-# Set compiler Path
-#PATH=/home/jimmy/cmpl/gas:/home/jimmy/cmpl/clang/bin/:$PATH
-export PATH="/home/jimmy/cmpl/gas:/home/jimmy/cmpl/clang/bin:$PATH"
-export LD_LIBRARY_PATH="/home/jimmy/cmpl/clang/lib64:$LD_LIBRARY_PATH"
-
-
-#
-# Make defconfig
-make -j${KEBABS} ${ARGS} ${DEVICE}_defconfig
-
-# Enable LTO
-if [[ "$@" =~ "lto"* ]]; then
-    enable_lto
-fi
-
-# # AOSP Build
-# echo "------ Stating AOSP Build ------"
-# os=aosp
-# make -j${KEBABS} ${ARGS} 2>&1 | tee build.log
-# find ${OUT_DIR}/$dts_source -name '*.dtb' -exec cat {} + > ${OUT_DIR}/arch/arm64/boot/dtb
-
-# mkdir -p anykernel/kernels/$os
-# # Import Anykernel3 folder
-# if [[ -f ${OUT_DIR}/arch/arm64/boot/Image.gz ]]; then
-#     cp ${OUT_DIR}/arch/arm64/boot/Image.gz anykernel/kernels/$os
-# else
-#   if [[ -f ${OUT_DIR}/arch/arm64/boot/Image ]]; then
-#       cp ${OUT_DIR}/arch/arm64/boot/Image anykernel/kernels/$os
-#   else
-#       tg_post_error aosp
-#   fi
-# fi
-# cp ${OUT_DIR}/arch/arm64/boot/dtb anykernel/kernels/$os
-# cp ${OUT_DIR}/arch/arm64/boot/dtbo.img anykernel/kernels/$os
-# echo "------ Finishing AOSP Build ------"
-
+MIUI_BUILD()
+{
 # MIUI Build
 echo "------ Starting MIUI Build ------"
 os=miui
@@ -209,11 +206,6 @@ scripts/config --file ${OUT_DIR}/.config \
     -e MI_RECLAIM \
     -e PERF_HUMANTASK \
     -e TASK_DELAY_ACCT
-
-# FIXME: disable LTO on MIUI
-if [[ "$@" =~ "lto"* ]]; then
-    disable_lto
-fi
 
 # Make olddefconfig
 cd ${OUT_DIR} || exit
@@ -242,72 +234,282 @@ else
 fi
 cp ${OUT_DIR}/arch/arm64/boot/dtb ${desk}/anykernel/kernels/$os
 cp ${OUT_DIR}/arch/arm64/boot/dtbo.img ${desk}/anykernel/kernels/$os
-
-# git checkout arch/arm64/boot/dts/vendor &>/dev/null
 echo "------ Finishing MIUI Build ------"
+}
 
-# # AOSPA Build
-# echo "------ Starting AOSPA Build ------"
-# os=aospa
+AOSPA_BUILD()
+{
+ # AOSPA Build
+ echo "------ Starting AOSPA Build ------"
+ os=aospa
 
-# # Make defconfig
-# make -j${KEBABS} ${ARGS} "${DEVICE}"_defconfig
+ # Make defconfig
+ make -j${KEBABS} ${ARGS} "${DEVICE}"_defconfig
 
-# scripts/config --file ${OUT_DIR}/.config \
-#     -d SDCARD_FS \
-#     -e UNICODE
+ scripts/config --file ${OUT_DIR}/.config \
+     -d SDCARD_FS \
+     -e UNICODE
 
-# # Enable LTO
-# if [[ "$@" =~ "lto"* ]]; then
-#     enable_lto
-# fi
+ # Make olddefconfig
+ cd ${OUT_DIR} || exit
+ make -j${KEBABS} ${ARGS} olddefconfig
+ cd ../ || exit
 
-# # Make olddefconfig
-# cd ${OUT_DIR} || exit
-# make -j${KEBABS} ${ARGS} olddefconfig
-# cd ../ || exit
+ make -j${KEBABS} ${ARGS} 2>&1 | tee build.log
 
-# make -j${KEBABS} ${ARGS} 2>&1 | tee build.log
+ find ${OUT_DIR}/$dts_source -name '*.dtb' -exec cat {} + > ${OUT_DIR}/arch/arm64/boot/dtb
 
-# find ${OUT_DIR}/$dts_source -name '*.dtb' -exec cat {} + > ${OUT_DIR}/arch/arm64/boot/dtb
+ mkdir -p ${desk}/anykernel/kernels/$os
+ # Import Anykernel3 folder
+ if [[ -f ${OUT_DIR}/arch/arm64/boot/Image.gz ]]; then
+     cp ${OUT_DIR}/arch/arm64/boot/Image.gz ${desk}/anykernel/kernels/$os
+ else
+   if [[ -f ${OUT_DIR}/arch/arm64/boot/Image ]]; then
+       cp ${OUT_DIR}/arch/arm64/boot/Image ${desk}/anykernel/kernels/$os
+   else
+      echo ".no image found."
+   fi
+ fi
+ cp ${OUT_DIR}/arch/arm64/boot/dtb ${desk}/anykernel/kernels/$os
+ cp ${OUT_DIR}/arch/arm64/boot/dtbo.img ${desk}/anykernel/kernels/$os
+ echo "------ Finishing AOSPA Build ------"
+}
 
-# mkdir -p anykernel/kernels/$os
-# # Import Anykernel3 folder
-# if [[ -f ${OUT_DIR}/arch/arm64/boot/Image.gz ]]; then
-#     cp ${OUT_DIR}/arch/arm64/boot/Image.gz anykernel/kernels/$os
-# else
-#   if [[ -f ${OUT_DIR}/arch/arm64/boot/Image ]]; then
-#       cp ${OUT_DIR}/arch/arm64/boot/Image anykernel/kernels/$os
-#   else
-#       tg_post_error aospa
-#   fi
-# fi
-# cp ${OUT_DIR}/arch/arm64/boot/dtb anykernel/kernels/$os
-# cp ${OUT_DIR}/arch/arm64/boot/dtbo.img anykernel/kernels/$os
-# echo "------ Finishing AOSPA Build ------"
+AOSPA_LTO_BUILD()
+{
+ # AOSPA LTO Build
+ echo "------ Starting AOSPA LTO Build ------"
+ os=aospa
 
-END=$(date +"%s")
-DIFF=$((END - START))
+ # Make defconfig
+ make -j${KEBABS} ${ARGS} "${DEVICE}"_defconfig
 
+ scripts/config --file ${OUT_DIR}/.config \
+     -d SDCARD_FS \
+     -e UNICODE
+ # Enable LTO
+     -e LTO_CLANG
+
+ # Make olddefconfig
+ cd ${OUT_DIR} || exit
+ make -j${KEBABS} ${ARGS} olddefconfig
+ cd ../ || exit
+
+ make -j${KEBABS} ${ARGS} 2>&1 | tee build.log
+
+ find ${OUT_DIR}/$dts_source -name '*.dtb' -exec cat {} + > ${OUT_DIR}/arch/arm64/boot/dtb
+
+ mkdir -p ${desk}/anykernel/kernels/$os
+ # Import Anykernel3 folder
+ if [[ -f ${OUT_DIR}/arch/arm64/boot/Image.gz ]]; then
+     cp ${OUT_DIR}/arch/arm64/boot/Image.gz ${desk}/anykernel/kernels/$os
+ else
+   if [[ -f ${OUT_DIR}/arch/arm64/boot/Image ]]; then
+       cp ${OUT_DIR}/arch/arm64/boot/Image ${desk}/anykernel/kernels/$os
+   else
+      echo ".no image found."
+   fi
+ fi
+ cp ${OUT_DIR}/arch/arm64/boot/dtb ${desk}/anykernel/kernels/$os
+ cp ${OUT_DIR}/arch/arm64/boot/dtbo.img ${desk}/anykernel/kernels/$os
+ echo "------ Finishing AOSPA LTO Build ------"
+}
+
+FUNC_ZIP()
+{
+# Export Zip name
+export ZIPNAME="${VERSION}.zip"
 cd ${desk}/anykernel || exit
 zip -r9 "${ZIPNAME}" ./* -x .git .gitignore ./*.zip
-
-#RESPONSE=$(curl -# -F "name=${ZIPNAME}" -F "file=@${ZIPNAME}" -u :"${PD_API_KEY}" https://pixeldrain.com/api/file)
-#FILEID=$(echo $RESPONSE | grep -Po '(?<="id":")[^"]*')
-
-#CHECKER=$(find ./ -maxdepth 1 -type f -name ${ZIPNAME} -printf "%s\n")
-#if (($((CHECKER / 1048576)) > 5)); then
- #   curl -s -X POST https://api.telegram.org/bot"${BOT_API_KEY}"/sendMessage -d text="✅ Kernel compiled successfully in $((DIFF / 60)) minute(s) and $((DIFF % 60)) seconds for ${DEVICE}" -d chat_id="${CI_CHANNEL_ID}" -d parse_mode=HTML
-#    curl -s -X POST https://api.telegram.org/bot"${BOT_API_KEY}"/sendMessage -d text="Kernel build link: https://pixeldrain.com/u/$FILEID" -d chat_id="${CI_CHANNEL_ID}" -d parse_mode=HTML
-  #  curl -F chat_id="${CI_CHANNEL_ID}" -F document=@"$(pwd)/${ZIPNAME}" https://api.telegram.org/bot"${BOT_API_KEY}"/sendDocument
-#else
-#    tg_post_error
-#fi
 cd "$(pwd)" || exit
+}
 
+FUNC_CLEAN()
+{
 # Cleanup
 rm -fr ${desk}/anykernel/kernels
 rm -fr ${OUT_DIR}/arch/arm64/boot/dtb
 rm -fr ${OUT_DIR}/arch/arm64/boot/dtbo.img
 rm -fr ${OUT_DIR}/arch/arm64/boot/Image.gz
 rm -fr ${OUT_DIR}/arch/arm64/boot/Image
+}
+
+OPTION_1()
+{
+START_TIME=`date +%s`
+VERSION="KimciLodon-v2-aosp-${DEVICE^^}-${DATE}"
+FUNC_CLEAN
+AOSP_BUILD
+FUNC_ZIP
+END_TIME=`date +%s`
+let "ELAPSED_TIME=$END_TIME-$START_TIME"
+echo ""
+echo "Total compiling time is $ELAPSED_TIME seconds"
+echo ""
+exit
+}
+
+OPTION_2()
+{
+START_TIME=`date +%s`
+VERSION="KimciLodon-v2-miui-${DEVICE^^}-${DATE}"
+FUNC_CLEAN
+MIUI_BUILD
+FUNC_ZIP
+END_TIME=`date +%s`
+let "ELAPSED_TIME=$END_TIME-$START_TIME"
+echo ""
+echo "Total compiling time is $ELAPSED_TIME seconds"
+echo ""
+exit
+}
+
+OPTION_3()
+{
+START_TIME=`date +%s`
+VERSION="KimciLodon-v2-aospa-${DEVICE^^}-${DATE}"
+FUNC_CLEAN
+AOSPA_BUILD
+FUNC_ZIP
+END_TIME=`date +%s`
+let "ELAPSED_TIME=$END_TIME-$START_TIME"
+echo ""
+echo "Total compiling time is $ELAPSED_TIME seconds"
+echo ""
+exit
+}
+
+OPTION_4()
+{
+START_TIME=`date +%s`
+VERSION="KimciLodon-v2-aosp-lto-${DEVICE^^}-${DATE}"
+FUNC_CLEAN
+AOSP_LTO_BUILD
+FUNC_ZIP
+END_TIME=`date +%s`
+let "ELAPSED_TIME=$END_TIME-$START_TIME"
+echo ""
+echo "Total compiling time is $ELAPSED_TIME seconds"
+echo ""
+exit
+}
+
+OPTION_5()
+{
+START_TIME=`date +%s`
+VERSION="KimciLodon-v2-aospa-lto-${DEVICE^^}-${DATE}"
+FUNC_CLEAN
+AOSPA_LTO_BUILD
+FUNC_ZIP
+END_TIME=`date +%s`
+let "ELAPSED_TIME=$END_TIME-$START_TIME"
+echo ""
+echo "Total compiling time is $ELAPSED_TIME seconds"
+echo ""
+exit
+}
+
+OPTION_6()
+{
+START_TIME=`date +%s`
+VERSION="KimciLodon-v2-all-${DEVICE^^}-${DATE}"
+FUNC_CLEAN
+AOSP_BUILD
+MIUI_BUILD
+AOSPA_BUILD
+FUNC_ZIP
+END_TIME=`date +%s`
+let "ELAPSED_TIME=$END_TIME-$START_TIME"
+echo ""
+echo "Total compiling time is $ELAPSED_TIME seconds"
+echo ""
+exit
+}
+
+OPTION_7()
+{
+START_TIME=`date +%s`
+VERSION="KimciLodon-v2-all-lto-${DEVICE^^}-${DATE}"
+FUNC_CLEAN
+AOSP_LTO_BUILD
+MIUI_BUILD
+AOSPA_LTO_BUILD
+FUNC_ZIP
+END_TIME=`date +%s`
+let "ELAPSED_TIME=$END_TIME-$START_TIME"
+echo ""
+echo "Total compiling time is $ELAPSED_TIME seconds"
+echo ""
+exit
+}
+
+# ----------------------------------
+# CHECK COMMAND LINE FOR ANY ENTRIES
+# ----------------------------------
+if [ $1 == 0 ]; then
+	OPTION_0
+fi
+if [ $1 == 1 ]; then
+	OPTION_1
+fi
+if [ $1 == 2 ]; then
+	OPTION_2
+fi
+if [ $1 == 3 ]; then
+	OPTION_3
+fi
+if [ $1 == 4 ]; then
+	OPTION_4
+fi
+if [ $1 == 5 ]; then
+	OPTION_5
+fi
+if [ $1 == 6 ]; then
+	OPTION_6
+fi
+if [ $1 == 7 ]; then
+	OPTION_7
+fi
+
+# -------------
+# PROGRAM START
+# -------------
+rm -rf ./build/build.log
+clear
+echo "kimciLodon Build Script"
+echo ""
+echo " 0) Clean Workspace"
+echo ""
+echo " 1) Build kimciLodon kernel for AOSP"
+echo " 2) Build kimciLodon kernel for MIUI"
+echo " 3) Build kimciLodon kernel for AOSPA"
+echo " 4) Build kimciLodon lto kernel for AOSP"
+echo " 5) Build kimciLodon lto kernel for AOSPA"
+echo " 6) Build all kernel"
+echo " 7) Build all lto kernel"
+echo ""
+echo " 00) Exit"
+echo ""
+echo "Jobs: ${KEBABS}"
+read -p "Please select an option " prompt
+echo ""
+if [ $prompt == "0" ]; then
+	FUNC_CLEAN
+	exit
+elif [ $prompt == "1" ]; then
+	OPTION_1
+elif [ $prompt == "2" ]; then
+	OPTION_2
+elif [ $prompt == "3" ]; then
+	OPTION_3
+elif [ $prompt == "4" ]; then
+	OPTION_4
+elif [ $prompt == "5" ]; then
+	OPTION_5
+elif [ $prompt == "6" ]; then
+	OPTION_6
+elif [ $prompt == "7" ]; then
+	OPTION_7
+elif [ $prompt == "00" ]; then
+	exit
+fi

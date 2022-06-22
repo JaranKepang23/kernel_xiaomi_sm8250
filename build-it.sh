@@ -444,28 +444,28 @@ exit
 # ----------------------------------
 # CHECK COMMAND LINE FOR ANY ENTRIES
 # ----------------------------------
-if [ $1 == 0 ]; then
+if [ "$@" == 0 ]; then
 	OPTION_0
 fi
-if [ $1 == 1 ]; then
+if [ "$@" == 1 ]; then
 	OPTION_1
 fi
-if [ $1 == 2 ]; then
+if [ "$@" == 2 ]; then
 	OPTION_2
 fi
-if [ $1 == 3 ]; then
+if [ "$@" == 3 ]; then
 	OPTION_3
 fi
-if [ $1 == 4 ]; then
+if [ "$@" == 4 ]; then
 	OPTION_4
 fi
-if [ $1 == 5 ]; then
+if [ "$@" == 5 ]; then
 	OPTION_5
 fi
-if [ $1 == 6 ]; then
+if [ "$@" == 6 ]; then
 	OPTION_6
 fi
-if [ $1 == 7 ]; then
+if [ "$@" == 7 ]; then
 	OPTION_7
 fi
 

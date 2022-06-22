@@ -53,7 +53,7 @@ static int add_to_rbuf(struct mbox_chan *chan, void *mssg)
 	return idx;
 }
 
-static int msg_submit(struct mbox_chan *chan)
+static void msg_submit(struct mbox_chan *chan)
 {
 	unsigned count, idx;
 	unsigned long flags;

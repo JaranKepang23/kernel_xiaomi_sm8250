@@ -1271,6 +1271,8 @@ static int dx_make_map(struct inode *dir, struct buffer_head *bh,
 	char *base = bh->b_data;
 	struct dx_hash_info h = *hinfo;
 
+
+
 	if (ext4_has_metadata_csum(dir->i_sb))
 		buflen -= sizeof(struct ext4_dir_entry_tail);
 

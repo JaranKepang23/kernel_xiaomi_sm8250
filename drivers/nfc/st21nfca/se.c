@@ -360,11 +360,12 @@ int st21nfca_connectivity_event_received(struct nfc_hci_dev *hdev, u8 host,
 
 		/* Check next byte is PARAMETERS tag (82) and the length field */
 		if (skb->data[transaction->aid_len + 2] !=
-		    NFC_EVT_TRANSACTION_PARAMS_TAG ||
-		    skb->len < transaction->aid_len + transaction->params_len + 4) {
+		    NFC_EVT_TRANSACTION_PARAMS_TAG) {
 			devm_kfree(dev, transaction);
 			return -EPROTO;
 		}
+
+		transaction->params_len = skb->data[transaction->aid_len + 3];
 
 		/* Total size is allocated (skb->len - 2) minus fixed array members */
 		if (transaction->params_len > ((skb->len - 2) -

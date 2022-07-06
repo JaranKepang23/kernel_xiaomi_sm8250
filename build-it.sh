@@ -335,7 +335,7 @@ rm -fr ${OUT_DIR}/arch/arm64/boot/Image
 OPTION_1()
 {
 START_TIME=`date +%s`
-VERSION="KimciLodon-v2-aosp-${DEVICE^^}-${DATE}"
+VERSION="KimciLodon-v3-aosp-${DEVICE^^}-${DATE}"
 FUNC_CLEAN
 AOSP_BUILD
 FUNC_ZIP
@@ -350,7 +350,7 @@ exit
 OPTION_2()
 {
 START_TIME=`date +%s`
-VERSION="KimciLodon-v2-miui-${DEVICE^^}-${DATE}"
+VERSION="KimciLodon-v3-miui-${DEVICE^^}-${DATE}"
 FUNC_CLEAN
 MIUI_BUILD
 FUNC_ZIP
@@ -365,7 +365,7 @@ exit
 OPTION_3()
 {
 START_TIME=`date +%s`
-VERSION="KimciLodon-v2-aospa-${DEVICE^^}-${DATE}"
+VERSION="KimciLodon-v3-aospa-${DEVICE^^}-${DATE}"
 FUNC_CLEAN
 AOSPA_BUILD
 FUNC_ZIP
@@ -380,7 +380,7 @@ exit
 OPTION_4()
 {
 START_TIME=`date +%s`
-VERSION="KimciLodon-v2-aosp-lto-${DEVICE^^}-${DATE}"
+VERSION="KimciLodon-v3-aosp-lto-${DEVICE^^}-${DATE}"
 FUNC_CLEAN
 AOSP_LTO_BUILD
 FUNC_ZIP
@@ -395,7 +395,7 @@ exit
 OPTION_5()
 {
 START_TIME=`date +%s`
-VERSION="KimciLodon-v2-aospa-lto-${DEVICE^^}-${DATE}"
+VERSION="KimciLodon-v3-aospa-lto-${DEVICE^^}-${DATE}"
 FUNC_CLEAN
 AOSPA_LTO_BUILD
 FUNC_ZIP
@@ -410,7 +410,7 @@ exit
 OPTION_6()
 {
 START_TIME=`date +%s`
-VERSION="KimciLodon-v2-all-${DEVICE^^}-${DATE}"
+VERSION="KimciLodon-v3-all-${DEVICE^^}-${DATE}"
 FUNC_CLEAN
 AOSP_BUILD
 MIUI_BUILD
@@ -427,7 +427,7 @@ exit
 OPTION_7()
 {
 START_TIME=`date +%s`
-VERSION="KimciLodon-v2-all-lto-${DEVICE^^}-${DATE}"
+VERSION="KimciLodon-v3-all-lto-${DEVICE^^}-${DATE}"
 FUNC_CLEAN
 AOSP_LTO_BUILD
 MIUI_BUILD
